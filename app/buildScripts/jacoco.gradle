@@ -1,7 +1,7 @@
 apply plugin: 'jacoco'
 
 jacoco {
-    toolVersion = "0.8.6"
+    toolVersion = "0.8.4"
     // Custom reports directory can be specified like this:
     // reportsDir = file("$buildDir/customJacocoReportDir")
 }
@@ -36,6 +36,13 @@ project.afterEvaluate {
                     '**/*Test*.*',
                     'android/**/*.*'
             ]
+
+            if (project.hasProperty("teamcity")) {
+                println "##teamcity[jacocoReport dataPath='$project.buildDir/jacoco/testDebugUnitTest.exec' "+
+                        "includes='com.abdelalieramli.experimental.*' "+
+                        "excludes='com.abdelalieramli.experimental.test.* **/*R*.* **/*Injector*.* **/*Activity*.* .*R **/BuildConfig.* .*BuildConfig .*Activity .*Test ']"
+            }
+
             def javaClasses = fileTree(dir: variant.javaCompiler.destinationDir, excludes: excludes)
             def kotlinClasses = fileTree(dir: "${buildDir}/tmp/kotlin-classes/${variantName}", excludes: excludes)
             classDirectories.from = files([javaClasses, kotlinClasses])

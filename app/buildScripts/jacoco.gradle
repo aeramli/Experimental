@@ -1,0 +1,71 @@
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = "0.8.6"
+    // Custom reports directory can be specified like this:
+    // reportsDir = file("$buildDir/customJacocoReportDir")
+}
+
+tasks.withType(Test) {
+    jacoco.includeNoLocationClasses = true
+}
+
+project.afterEvaluate {
+
+    android.applicationVariants.all { variant ->
+        def variantName = variant.name
+        def testTaskName = "test${variantName.capitalize()}UnitTest"
+        def uiTestCoverageTaskName = "create${variantName.capitalize()}CoverageReport"
+
+        tasks.create(name: "${testTaskName}Coverage", type: JacocoReport, dependsOn: ["$testTaskName", "$uiTestCoverageTaskName"]) {
+            group = "Reporting"
+            description = "Generate Jacoco coverage reports for the ${variantName.capitalize()} build."
+
+            reports {
+                html.enabled = true
+                xml.enabled = true
+            }
+
+            def excludes = [
+                    '**/R.class',
+                    '**/R$*.class',
+                    '**/BuildConfig.*',
+                    '**/Manifest*.*',
+                    '**/*Test*.*',
+                    'android/**/*.*'
+            ]
+            def javaClasses = fileTree(dir: variant.javaCompiler.destinationDir, excludes: excludes)
+            def kotlinClasses = fileTree(dir: "${buildDir}/tmp/kotlin-classes/${variantName}", excludes: excludes)
+            classDirectories.from = files([javaClasses, kotlinClasses])
+
+            sourceDirectories.from = files([
+                    "$project.projectDir/src/main/java",
+                    "$project.projectDir/src/${variantName}/java",
+                    "$project.projectDir/src/main/kotlin",
+                    "$project.projectDir/src/${variantName}/kotlin"
+            ])
+
+            //Set your UnitTest .exec file
+            executionData.setFrom(files(["${project.buildDir}/jacoco/${testTaskName}.exec"]))
+
+            //You need to make sure this evaluates after the task begins, not at the gradle configuration stage
+            doFirst {
+                //Now look for any files matching *.ec - You can add more details about specific flavor directories if needed.
+                def instrumentationTestCoverageDirs = project.fileTree("${project.buildDir}/outputs/code_coverage")
+                        .matching { include "**/*.ec" }
+
+                //Take this file set and combine it with the UnitTest file set
+                def allCodeCoverageFiles = instrumentationTestCoverageDirs.files + executionData.files
+                //If you want to log out what files you are including, use this (if it gives warnings on the info lines, you can simply change them to `println`
+                project.logger.with {
+                    //info("using following code coverage files for ${taskName}")
+                    allCodeCoverageFiles.each { coverageFile ->
+                        info(coverageFile.path)
+                    }
+                }
+
+                executionData.setFrom(allCodeCoverageFiles)
+            }
+        }
+    }
+}

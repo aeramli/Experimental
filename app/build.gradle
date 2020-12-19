@@ -2,7 +2,8 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
 }
-apply from: 'buildscripts/jacoco.gradle'
+//Todo enable after fixing github action
+//apply from: 'buildscripts/jacoco.gradle'
 
 android {
     compileSdkVersion 30
